@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # pgAdmin - PostgreSQL Management Tool (connects to Railway PostgreSQL)
+  # Your app uses: hopper.proxy.rlwy.net:35071 (Railway PostgreSQL)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: shahin-ai-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@shahin-ai.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin_password}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    ports:
+      - "8083:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - shahin-ai-network
+    restart: unless-stopped
+
+  # MySQL Database (Optional - if you want MySQL support)
+  mysql:
+    image: mysql:8.0
+    container_name: shahin-ai-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_password_change_me}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-shahin_ai_db}
+      - MYSQL_USER=${MYSQL_USER:-appuser}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-app_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - shahin-ai-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # phpMyAdmin - MySQL/MariaDB Management Tool
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: shahin-ai-phpmyadmin
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_password_change_me}
+      - UPLOAD_LIMIT=300M
+    ports:
+      - "8082:80"
+    networks:
+      - shahin-ai-network
+    restart: unless-stopped
+
+  # Redis Cache (Optional)
+  redis:
+    image: redis:7-alpine
+    container_name: shahin-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - shahin-ai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  shahin-ai-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  redis-data:
+    driver: local
+

@@ -1,0 +1,178 @@
+{
+  "name": "GRC Compliance Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "grc-compliance-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:32b\",\n  \"prompt\": \"You are a GRC compliance expert. Analyze this compliance request:\\n\\n{{ $json.body.request }}\\n\\nProvide a structured analysis with recommendations.\",\n  \"stream\": false\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ollama-request",
+      "name": "Ollama LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, analysis: $json.response, model: 'qwen2.5:32b' } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "weekly-schedule",
+      "name": "Weekly Compliance Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5600/api/app/assessment",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "id": "get-assessments",
+      "name": "Get GRC Assessments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-overdue",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Overdue",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-overdue",
+      "name": "Filter Overdue",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [700, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "grc-alerts@shahin-ai.com",
+        "toEmail": "admin@shahin-ai.com",
+        "subject": "GRC Alert: Overdue Assessments",
+        "emailType": "html",
+        "html": "<h2>Overdue GRC Assessments</h2>\n<p>The following assessments require immediate attention:</p>\n<ul>\n{{ $json.items.map(item => `<li>${item.name} - Due: ${item.dueDate}</li>`).join('') }}\n</ul>"
+      },
+      "id": "send-alert",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [900, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Ollama LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama LLM": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Compliance Check": {
+      "main": [
+        [
+          {
+            "node": "Get GRC Assessments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GRC Assessments": {
+      "main": [
+        [
+          {
+            "node": "Filter Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Overdue": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

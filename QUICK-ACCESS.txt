@@ -1,0 +1,29 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           GRC Application - الوصول السريع                     ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🌐 URL:
+   http://37.27.139.173:5500
+
+🔐 Login:
+   Username: admin
+   Password: 1q2w3E*
+
+✅ FIXED: Firewall ports 5500 & 5501 now open!
+
+📍 All files in ONE location:
+   /root/app.shahin-ai.com/Shahin-ai/aspnet-core/
+
+⚙️  Only 2 config files:
+   1. src/Grc.Web/appsettings.json
+   2. src/Grc.Web/appsettings.Production.json
+
+🔧 All connections LOCAL:
+   ✓ PostgreSQL: localhost:5434 (Docker)
+   ✓ Redis: localhost:6379 (Docker)
+   ✓ No external services!
+
+🚀 Start app:
+   cd /root/app.shahin-ai.com/Shahin-ai/aspnet-core
+   ./start-unified.sh
+
